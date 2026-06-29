@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS scan_analytics (
   os TEXT,
   browser TEXT,
   referrer TEXT,
+  scanner_id TEXT,
   scanned_at TIMESTAMPTZ DEFAULT now()
 );
 

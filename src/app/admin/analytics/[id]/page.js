@@ -99,7 +99,18 @@ export default function AnalyticsPage() {
         .order("scanned_at", { ascending: false });
 
       if (scanErr) throw scanErr;
-      setScans(scanData || []);
+      
+      const decodedScans = (scanData || []).map((s) => {
+        let city = s.city || "";
+        if (city) {
+          try {
+            city = decodeURIComponent(city);
+          } catch {}
+        }
+        return { ...s, city };
+      });
+
+      setScans(decodedScans);
     } catch (err) {
       console.error(err);
       setError("Failed to load analytics. Please try again.");
@@ -180,12 +191,16 @@ export default function AnalyticsPage() {
       };
     }
 
-    // Unique Visitors: group by Device Type + OS + Browser + Location + Day
+    // Unique Visitors: group by scanner_id or Device Type + OS + Browser + Location + Day
     const uniqueFingerprints = new Set();
     scans.forEach((s) => {
-      const dateStr = new Date(s.scanned_at).toDateString();
-      const fingerprint = `${s.device_type}-${s.os}-${s.browser}-${s.country || ""}-${s.city || ""}-${dateStr}`;
-      uniqueFingerprints.add(fingerprint);
+      if (s.scanner_id) {
+        uniqueFingerprints.add(s.scanner_id);
+      } else {
+        const dateStr = new Date(s.scanned_at).toDateString();
+        const fingerprint = `${s.device_type}-${s.os}-${s.browser}-${s.country || ""}-${s.city || ""}-${dateStr}`;
+        uniqueFingerprints.add(fingerprint);
+      }
     });
 
     // Peak Hour calculation

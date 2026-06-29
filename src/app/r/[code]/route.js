@@ -2,6 +2,16 @@ import { NextResponse } from "next/server";
 import { after } from "next/server";
 import { getSupabase } from "@/utils/supabase";
 
+// Fast ID generator for the Edge
+function generateId(length = 16) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 // Lightweight, zero-dependency User-Agent parser that works at the Edge
 function parseUserAgent(ua) {
   if (!ua) {
@@ -57,9 +67,24 @@ export async function GET(request, { params }) {
     );
   }
 
+  // Get or set scanner ID cookie to track unique visitor
+  let scannerId = request.cookies.get("qr_scanner_id")?.value;
+  let isNewScanner = false;
+  if (!scannerId) {
+    scannerId = generateId();
+    isNewScanner = true;
+  }
+
   // Extract Vercel Edge Geolocation and other tracking headers
   const country = request.headers.get("x-vercel-ip-country") || null;
-  const city = request.headers.get("x-vercel-ip-city") || null;
+  let city = request.headers.get("x-vercel-ip-city") || null;
+  if (city) {
+    try {
+      city = decodeURIComponent(city);
+    } catch {
+      // fallback
+    }
+  }
   const latitude = request.headers.get("x-vercel-ip-latitude") || null;
   const longitude = request.headers.get("x-vercel-ip-longitude") || null;
   const referrer = request.headers.get("referer") || null;
@@ -83,12 +108,23 @@ export async function GET(request, { params }) {
         os: parsedUA.os,
         browser: parsedUA.browser,
         referrer: referrer,
+        scanner_id: scannerId,
       });
     } catch (err) {
       console.error("Failed to log scan analytics:", err);
     }
   });
 
-  // Return redirect response immediately
-  return NextResponse.redirect(data.destination_url, { status: 302 });
+  // Return redirect response immediately and set cookie
+  const response = NextResponse.redirect(data.destination_url, { status: 302 });
+  if (isNewScanner) {
+    response.cookies.set("qr_scanner_id", scannerId, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+  }
+  return response;
 }
