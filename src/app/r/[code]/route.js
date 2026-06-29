@@ -1,15 +1,6 @@
 import { NextResponse } from "next/server";
 import { after } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-// Create a dedicated Supabase client for the route handler
-// (cannot import from utils because that file may throw during build if env vars are missing)
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
-}
+import { getSupabase } from "@/utils/supabase";
 
 export async function GET(request, { params }) {
   const { code } = await params;
@@ -41,7 +32,8 @@ export async function GET(request, { params }) {
 
   after(async () => {
     try {
-      await supabase.from("scan_analytics").insert({
+      const sb = getSupabase();
+      await sb.from("scan_analytics").insert({
         link_id: linkId,
         user_agent: userAgent,
       });

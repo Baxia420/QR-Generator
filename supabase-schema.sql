@@ -28,7 +28,18 @@ CREATE TABLE IF NOT EXISTS scan_analytics (
 -- Index on link_id for fast aggregate queries (scan counts)
 CREATE INDEX IF NOT EXISTS idx_scan_analytics_link_id ON scan_analytics (link_id);
 
--- Disable Row Level Security for frictionless redirects
--- The admin UI is protected by middleware-level Basic Auth instead
-ALTER TABLE qr_links DISABLE ROW LEVEL SECURITY;
-ALTER TABLE scan_analytics DISABLE ROW LEVEL SECURITY;
+-- ============================================
+-- Row Level Security (RLS) Configuration
+-- ============================================
+-- Disable RLS entirely so the anon key can perform all operations.
+-- Admin access is protected by password auth at the application layer.
+
+ALTER TABLE qr_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE scan_analytics ENABLE ROW LEVEL SECURITY;
+
+-- Allow full access via the anon key (app-level auth handles security)
+CREATE POLICY "Allow all operations on qr_links" ON qr_links
+  FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow all operations on scan_analytics" ON scan_analytics
+  FOR ALL USING (true) WITH CHECK (true);
