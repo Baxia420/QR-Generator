@@ -14,12 +14,15 @@ export default function QRCodeCard({ shortCode, baseUrl, title }) {
 
     const url = canvas.toDataURL("image/png");
     const link = document.createElement("a");
-    link.download = `qr-${shortCode}.png`;
+    const filename = title
+      ? `${title.trim().replace(/[/\\?%*:|"<>]/g, "-")}.png`
+      : `qr-${shortCode}.png`;
+    link.download = filename;
     link.href = url;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, [shortCode]);
+  }, [shortCode, title]);
 
   return (
     <div className="qr-card">

@@ -210,6 +210,16 @@ export async function GET(request, { params }) {
           @keyframes spin {
             to { transform: rotate(360deg); }
           }
+          .status-message {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 16px;
+            text-align: center;
+            line-height: 1.4;
+          }
+          .status-message strong {
+            color: var(--accent);
+          }
         </style>
       </head>
       <body>
@@ -237,6 +247,9 @@ export async function GET(request, { params }) {
               Skip & Continue
             </button>
           </div>
+          <div id="countdown-status" class="status-message">
+            Redirecting automatically in <strong id="timer-seconds">10</strong> seconds...
+          </div>
         </div>
 
         <script>
@@ -246,16 +259,34 @@ export async function GET(request, { params }) {
           const referrer = document.referrer || "";
           
           let redirected = false;
+          let secondsLeft = 10;
+          const statusText = document.getElementById("countdown-status");
+          const timerSpan = document.getElementById("timer-seconds");
 
-          // Auto-skip after 10 seconds of inactivity
-          const timeoutId = setTimeout(() => {
-            proceed();
-          }, 10000);
+          // Countdown timer interval
+          const intervalId = setInterval(() => {
+            if (redirected) {
+              clearInterval(intervalId);
+              return;
+            }
+            secondsLeft--;
+            if (timerSpan) {
+              timerSpan.textContent = secondsLeft;
+            }
+            if (secondsLeft <= 0) {
+              clearInterval(intervalId);
+              proceed();
+            }
+          }, 1000);
 
           function proceed(lat = null, lon = null) {
             if (redirected) return;
             redirected = true;
-            clearTimeout(timeoutId);
+            clearInterval(intervalId);
+            
+            if (statusText) {
+              statusText.innerHTML = "Redirecting...";
+            }
 
              fetch('/api/log-scan', {
                method: 'POST',
@@ -283,13 +314,23 @@ export async function GET(request, { params }) {
             loader.style.display = "block";
             btnText.disabled = true;
 
+            if (statusText) {
+              statusText.innerHTML = "Verifying location... please check your browser permission prompt.";
+            }
+
             if (navigator.geolocation) {
               navigator.geolocation.getCurrentPosition(
                 (pos) => {
+                  if (statusText) {
+                    statusText.innerHTML = "Location verified! Redirecting...";
+                  }
                   proceed(pos.coords.latitude, pos.coords.longitude);
                 },
                 (err) => {
                   console.warn("Location permission denied", err);
+                  if (statusText) {
+                    statusText.innerHTML = "Permission denied or error. Redirecting...";
+                  }
                   proceed();
                 },
                 { timeout: 6000, enableHighAccuracy: true }

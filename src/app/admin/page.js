@@ -123,7 +123,7 @@ export default function AdminPage() {
   // Create a new link with collision-safe short code generation
   async function handleCreate(e) {
     e.preventDefault();
-    if (!formUrl.trim()) return;
+    if (!formUrl.trim() || !formTitle.trim()) return;
 
     setCreating(true);
     setError(null);
@@ -287,13 +287,14 @@ export default function AdminPage() {
               />
             </div>
             <div className="form-group">
-              <label htmlFor="link-title">Title (optional)</label>
+              <label htmlFor="link-title">Title</label>
               <input
                 id="link-title"
                 type="text"
                 placeholder="e.g. Summer Event 2026"
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
+                required
                 className="input"
               />
             </div>
@@ -318,7 +319,7 @@ export default function AdminPage() {
           
           <button
             type="submit"
-            disabled={creating || !formUrl.trim()}
+            disabled={creating || !formUrl.trim() || !formTitle.trim()}
             className="btn btn-primary"
           >
             {creating ? (
