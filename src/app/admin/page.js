@@ -41,13 +41,18 @@ export default function AdminPage() {
   const [showQR, setShowQR] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [error, setError] = useState(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Base URL for QR codes — falls back to current origin if not set
   const configuredBaseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   const baseUrl =
     configuredBaseUrl ||
     (typeof window !== "undefined" ? window.location.origin : "");
-  const isLocalhost = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1");
+  const isLocalhost = mounted && (baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1"));
 
   // Fetch all links with scan counts (efficient grouped query)
   const fetchLinks = useCallback(async () => {
