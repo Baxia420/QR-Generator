@@ -123,6 +123,38 @@ export default function AnalyticsPage() {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    if (!linkId) return;
+
+    const channel = supabase
+      .channel(`realtime-scans-${linkId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "scan_analytics",
+          filter: `link_id=eq.${linkId}`,
+        },
+        (payload) => {
+          const newScan = payload.new;
+          let city = newScan.city || "";
+          if (city) {
+            try {
+              city = decodeURIComponent(city);
+            } catch {}
+          }
+          const formattedScan = { ...newScan, city };
+          setScans((prev) => [formattedScan, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [linkId]);
+
   // Handle Export CSV
   const handleExportCSV = useCallback(() => {
     if (!scans.length) return;

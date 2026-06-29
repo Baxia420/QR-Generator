@@ -91,6 +91,35 @@ export default function AdminPage() {
     fetchLinks();
   }, [fetchLinks]);
 
+  useEffect(() => {
+    const channel = supabase
+      .channel("dashboard-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "scan_analytics",
+        },
+        (payload) => {
+          const newScan = payload.new;
+          setLinks((prevLinks) =>
+            prevLinks.map((link) => {
+              if (link.id === newScan.link_id) {
+                return { ...link, scan_count: (link.scan_count || 0) + 1 };
+              }
+              return link;
+            })
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Create a new link with collision-safe short code generation
   async function handleCreate(e) {
     e.preventDefault();
