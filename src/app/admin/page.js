@@ -17,6 +17,8 @@ import {
   Check,
   Loader2,
   AlertTriangle,
+  Compass,
+  HelpCircle,
 } from "lucide-react";
 
 // Generate a random 6-character alphanumeric short code
@@ -43,6 +45,8 @@ export default function AdminPage() {
   const [copiedId, setCopiedId] = useState(null);
   const [error, setError] = useState(null);
   const [mounted, setMounted] = useState(false);
+  const [formRequireGps, setFormRequireGps] = useState(false);
+  const [editRequireGps, setEditRequireGps] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -107,12 +111,14 @@ export default function AdminPage() {
         short_code: shortCode,
         destination_url: formUrl.trim(),
         title: formTitle.trim() || null,
+        require_gps: formRequireGps,
       });
 
       if (!insertError) {
         success = true;
         setFormUrl("");
         setFormTitle("");
+        setFormRequireGps(false);
         await fetchLinks();
       } else if (insertError.code === "23505") {
         // Unique constraint violation — retry with a new code
@@ -136,7 +142,10 @@ export default function AdminPage() {
 
     const { error: updateError } = await supabase
       .from("qr_links")
-      .update({ destination_url: editUrl.trim() })
+      .update({ 
+        destination_url: editUrl.trim(),
+        require_gps: editRequireGps,
+      })
       .eq("id", id);
 
     if (updateError) {
@@ -260,6 +269,21 @@ export default function AdminPage() {
               />
             </div>
           </div>
+          
+          <div className="form-group-checkbox">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={formRequireGps}
+                onChange={(e) => setFormRequireGps(e.target.checked)}
+              />
+              <span>Request Precise Location (GPS)</span>
+            </label>
+            <span className="tooltip-hint" title="Asks scanners to share their precise GPS location. If disabled, location is estimated using their IP.">
+              <HelpCircle size={14} />
+            </span>
+          </div>
+          
           <button
             type="submit"
             disabled={creating || !formUrl.trim()}
@@ -314,9 +338,17 @@ export default function AdminPage() {
                 {links.map((link) => (
                   <tr key={link.id}>
                     <td className="cell-title">
-                      {link.title || (
-                        <span className="text-muted">Untitled</span>
-                      )}
+                      <div className="title-cell-wrapper">
+                        {link.title || (
+                          <span className="text-muted">Untitled</span>
+                        )}
+                        {link.require_gps && (
+                          <span className="gps-badge" title="Precise GPS location active">
+                            <Compass size={12} />
+                            GPS
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <div className="short-url-cell">
@@ -344,6 +376,16 @@ export default function AdminPage() {
                             className="input input-sm"
                             autoFocus
                           />
+                          <div className="edit-inline-gps">
+                            <label className="checkbox-label-sm">
+                              <input
+                                type="checkbox"
+                                checked={editRequireGps}
+                                onChange={(e) => setEditRequireGps(e.target.checked)}
+                              />
+                              GPS
+                            </label>
+                          </div>
                           <button
                             onClick={() => handleUpdate(link.id)}
                             className="btn btn-primary btn-sm"
@@ -405,6 +447,7 @@ export default function AdminPage() {
                           onClick={() => {
                             setEditingId(link.id);
                             setEditUrl(link.destination_url);
+                            setEditRequireGps(link.require_gps || false);
                           }}
                           className="btn-icon"
                           title="Edit destination"

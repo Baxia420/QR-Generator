@@ -50,10 +50,10 @@ export async function GET(request, { params }) {
 
   const supabase = getSupabase();
 
-  // Look up the short code
+  // Look up the short code and get require_gps setting
   const { data, error } = await supabase
     .from("qr_links")
-    .select("id, destination_url")
+    .select("id, destination_url, title, require_gps")
     .eq("short_code", code)
     .single();
 
@@ -75,23 +75,263 @@ export async function GET(request, { params }) {
     isNewScanner = true;
   }
 
-  // Extract Vercel Edge Geolocation and other tracking headers
+  const destinationUrl = data.destination_url;
+  const linkId = data.id;
+  const linkTitle = data.title || "the requested event";
+
+  // Case 1: Precise GPS location is required
+  if (data.require_gps) {
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Check-in Location Verification</title>
+        <style>
+          :root {
+            --bg-primary: #07070d;
+            --bg-card: #12121e;
+            --border-color: #1e1e35;
+            --text-primary: #f0f0f5;
+            --text-secondary: #8888a8;
+            --accent: #6c5ce7;
+            --accent-hover: #7c6ef7;
+            --radius: 16px;
+            --radius-sm: 8px;
+            --accent-glow: rgba(108, 92, 231, 0.25);
+          }
+          body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 24px;
+            box-sizing: border-box;
+          }
+          .modal-card {
+            width: 100%;
+            max-width: 400px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 32px;
+            box-sizing: border-box;
+            box-shadow: 0 0 40px rgba(108, 92, 231, 0.08);
+            text-align: center;
+            animation: scaleIn 0.3s ease-out;
+          }
+          @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+          }
+          .icon-container {
+            width: 56px;
+            height: 56px;
+            background: rgba(108, 92, 231, 0.1);
+            color: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+          }
+          .icon-container svg {
+            width: 24px;
+            height: 24px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+          }
+          h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0 0 10px;
+            letter-spacing: -0.02em;
+          }
+          p {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin: 0 0 24px;
+          }
+          .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          .btn {
+            padding: 12px 20px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+          }
+          .btn-primary {
+            background: linear-gradient(135deg, #6c5ce7 0%, #a855f7 100%);
+            color: white;
+            box-shadow: 0 2px 10px var(--accent-glow);
+          }
+          .btn-primary:hover {
+            box-shadow: 0 4px 18px rgba(108, 92, 231, 0.35);
+            transform: translateY(-1px);
+          }
+          .btn-secondary {
+            background: #1a1a2e;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+          }
+          .btn-secondary:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+          }
+          .loader {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-left-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+          }
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="modal-card">
+          <div class="icon-container">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="3"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+            </svg>
+          </div>
+          <h1>Location Verification</h1>
+          <p>
+            To complete check-in, we need to verify that you are physically present at <strong>${linkTitle}</strong>.
+          </p>
+          <div class="button-group">
+            <button onclick="requestLocation()" id="btn-share" class="btn btn-primary">
+              <div class="loader" id="share-loader"></div>
+              Verify Location
+            </button>
+            <button onclick="proceed()" class="btn btn-secondary">
+              Skip & Continue
+            </button>
+          </div>
+        </div>
+
+        <script>
+          const dest = "${destinationUrl}";
+          const linkId = "${linkId}";
+          const scannerId = "${scannerId}";
+          const referrer = document.referrer || "";
+          
+          let redirected = false;
+
+          // Auto-skip after 10 seconds of inactivity
+          const timeoutId = setTimeout(() => {
+            proceed();
+          }, 10000);
+
+          function proceed(lat = null, lon = null) {
+            if (redirected) return;
+            redirected = true;
+            clearTimeout(timeoutId);
+
+            // Log details via our API endpoint
+            fetch('/api/log-scan', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                linkId: linkId,
+                latitude: lat,
+                longitude: lon,
+                userAgent: navigator.userAgent,
+                referrer: referrer,
+                scannerId: scannerId
+              })
+            }).catch(err => console.error("Error logging scan:", err))
+              .finally(() => {
+                window.location.href = dest;
+              });
+          }
+
+          function requestLocation() {
+            const loader = document.getElementById("share-loader");
+            const btnText = document.getElementById("btn-share");
+            loader.style.display = "block";
+            btnText.disabled = true;
+
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  proceed(pos.coords.latitude, pos.coords.longitude);
+                },
+                (err) => {
+                  console.warn("Location permission denied", err);
+                  proceed();
+                },
+                { timeout: 6000, enableHighAccuracy: true }
+              );
+            } else {
+              proceed();
+            }
+          }
+        </script>
+      </body>
+      </html>
+    `;
+
+    const response = new NextResponse(html, {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+
+    if (isNewScanner) {
+      response.cookies.set("qr_scanner_id", scannerId, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+      });
+    }
+
+    return response;
+  }
+
+  // Case 2: Standard fast 302 redirect
   const country = request.headers.get("x-vercel-ip-country") || null;
   let city = request.headers.get("x-vercel-ip-city") || null;
   if (city) {
     try {
       city = decodeURIComponent(city);
-    } catch {
-      // fallback
-    }
+    } catch {}
   }
   const latitude = request.headers.get("x-vercel-ip-latitude") || null;
   const longitude = request.headers.get("x-vercel-ip-longitude") || null;
   const referrer = request.headers.get("referer") || null;
   const userAgent = request.headers.get("user-agent") || null;
-  const linkId = data.id;
 
-  // Schedule analytics insert AFTER the response is sent
   after(async () => {
     try {
       const parsedUA = parseUserAgent(userAgent);
@@ -111,16 +351,15 @@ export async function GET(request, { params }) {
         scanner_id: scannerId,
       });
     } catch (err) {
-      console.error("Failed to log scan analytics:", err);
+      console.error("Failed to log standard scan analytics:", err);
     }
   });
 
-  // Return redirect response immediately and set cookie
-  const response = NextResponse.redirect(data.destination_url, { status: 302 });
+  const response = NextResponse.redirect(destinationUrl, { status: 302 });
   if (isNewScanner) {
     response.cookies.set("qr_scanner_id", scannerId, {
       path: "/",
-      maxAge: 60 * 60 * 24 * 365, // 1 year
+      maxAge: 60 * 60 * 24 * 365,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

@@ -499,6 +499,12 @@ export default function AnalyticsPage() {
             <div className="info-title-row">
               <h2>{link.title || <span className="text-muted">Untitled Link</span>}</h2>
               <span className="code-badge">/r/{link.short_code}</span>
+              {link.require_gps && (
+                <span className="gps-badge" title="Precise GPS location active">
+                  <Compass size={12} style={{ marginRight: '4px' }} />
+                  GPS Active
+                </span>
+              )}
             </div>
             <p className="destination-text">
               <span className="text-muted">Redirects to: </span>

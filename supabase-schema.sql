@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS qr_links (
   short_code TEXT UNIQUE NOT NULL,
   destination_url TEXT NOT NULL,
   title TEXT,
+  require_gps BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
