@@ -1493,5 +1493,79 @@ body {
   transform: translateX(-50%) scale(1);
 }
 
+/* Lifetime Stats Modal Styles */
+.clickable-stat {
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.clickable-stat:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 4px 20px rgba(108, 92, 231, 0.15);
+}
+
+.lifetime-modal-content h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--text-primary);
+}
+
+.lifetime-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 12px;
+}
+
+@media (max-width: 580px) {
+  .lifetime-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lifetime-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  padding: 20px 12px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.2s;
+}
+
+.lifetime-card:hover {
+  border-color: var(--accent);
+}
+
+.lifetime-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+}
+
+.lifetime-value {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+
+.loading-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 0;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+
 
 

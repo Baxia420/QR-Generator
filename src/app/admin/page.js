@@ -47,6 +47,10 @@ export default function AdminPage() {
   const [mounted, setMounted] = useState(false);
   const [formRequireGps, setFormRequireGps] = useState(false);
   const [editRequireGps, setEditRequireGps] = useState(false);
+  
+  const [lifetimeStats, setLifetimeStats] = useState(null);
+  const [loadingLifetime, setLoadingLifetime] = useState(false);
+  const [showLifetimeModal, setShowLifetimeModal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -69,6 +73,7 @@ export default function AdminPage() {
       const { data: linksData, error: linksError } = await supabase
         .from("qr_links")
         .select("*, scan_analytics(count)")
+        .eq("deleted", false)
         .order("created_at", { ascending: false });
 
       if (linksError) throw linksError;
@@ -186,16 +191,39 @@ export default function AdminPage() {
     }
   }
 
-  // Delete a link
+  // Fetch lifetime stats
+  async function handleOpenLifetimeStats() {
+    setShowLifetimeModal(true);
+    setLoadingLifetime(true);
+    try {
+      const [linksRes, scansRes, uniqueRes] = await Promise.all([
+        supabase.from("qr_links").select("id", { count: "exact", head: true }),
+        supabase.from("scan_analytics").select("id", { count: "exact", head: true }),
+        supabase.from("scan_analytics").select("scanner_id")
+      ]);
+      
+      const totalLinks = linksRes.count || 0;
+      const totalScans = scansRes.count || 0;
+      const uniqueScanners = new Set((uniqueRes.data || []).map(d => d.scanner_id).filter(Boolean)).size;
+      
+      setLifetimeStats({ totalLinks, totalScans, uniqueScanners });
+    } catch (err) {
+      console.error("Failed to load lifetime stats:", err);
+    } finally {
+      setLoadingLifetime(false);
+    }
+  }
+
+  // Soft Delete a link
   async function handleDelete(id) {
     const confirmed = window.confirm(
-      "Delete this link? All associated scan analytics will also be removed."
+      "Delete this link? It will be removed from your dashboard, but historical scan statistics will be preserved."
     );
     if (!confirmed) return;
 
     const { error: deleteError } = await supabase
       .from("qr_links")
-      .delete()
+      .update({ deleted: true })
       .eq("id", id);
 
     if (deleteError) {
@@ -244,7 +272,11 @@ export default function AdminPage() {
               <span className="stat-label">Total Links</span>
             </div>
           </div>
-          <div className="stat-card">
+          <div 
+            className="stat-card clickable-stat" 
+            onClick={handleOpenLifetimeStats}
+            title="Click to view system lifetime stats"
+          >
             <BarChart3 size={18} />
             <div>
               <span className="stat-value">
@@ -519,6 +551,49 @@ export default function AdminPage() {
               baseUrl={baseUrl}
               title={links.find((l) => l.id === showQR)?.title}
             />
+          </div>
+        </div>
+      )}
+      {/* Lifetime Stats Modal */}
+      {showLifetimeModal && (
+        <div className="qr-modal-overlay" onClick={() => setShowLifetimeModal(false)}>
+          <div className="qr-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setShowLifetimeModal(false)}
+              className="qr-modal-close"
+            >
+              <X size={20} />
+            </button>
+            <div className="lifetime-modal-content">
+              <h2>System Lifetime Statistics</h2>
+              <p className="text-muted text-sm mb-6" style={{ marginBottom: '24px', fontSize: '0.85rem' }}>
+                Historical aggregates across all QR codes and events ever created.
+              </p>
+              
+              {loadingLifetime ? (
+                <div className="loading-stats">
+                  <Loader2 className="spin" size={24} />
+                  <span>Loading lifetime records...</span>
+                </div>
+              ) : lifetimeStats ? (
+                <div className="lifetime-grid">
+                  <div className="lifetime-card">
+                    <span className="lifetime-label">Total QRs Generated</span>
+                    <span className="lifetime-value">{lifetimeStats.totalLinks}</span>
+                  </div>
+                  <div className="lifetime-card">
+                    <span className="lifetime-label">Total Scans Logged</span>
+                    <span className="lifetime-value">{lifetimeStats.totalScans}</span>
+                  </div>
+                  <div className="lifetime-card">
+                    <span className="lifetime-label">Total Unique Visitors</span>
+                    <span className="lifetime-value">{lifetimeStats.uniqueScanners}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-danger">Failed to load statistics.</p>
+              )}
+            </div>
           </div>
         </div>
       )}

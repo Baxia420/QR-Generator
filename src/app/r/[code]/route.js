@@ -50,14 +50,14 @@ export async function GET(request, { params }) {
 
   const supabase = getSupabase();
 
-  // Look up the short code and get require_gps setting
+  // Look up the short code and get require_gps and deleted settings
   const { data, error } = await supabase
     .from("qr_links")
-    .select("id, destination_url, title, require_gps")
+    .select("id, destination_url, title, require_gps, deleted")
     .eq("short_code", code)
     .single();
 
-  if (error || !data) {
+  if (error || !data || data.deleted) {
     return NextResponse.json(
       {
         error: "Link not found",
