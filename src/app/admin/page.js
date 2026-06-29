@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { supabase } from "@/utils/supabase";
 import QRCodeCard from "@/components/QRCodeCard";
 import {
@@ -393,6 +394,13 @@ export default function AdminPage() {
                         >
                           <QrCode size={16} />
                         </button>
+                        <Link
+                          href={`/admin/analytics/${link.id}`}
+                          className="btn-icon"
+                          title="View Analytics"
+                        >
+                          <BarChart3 size={16} />
+                        </Link>
                         <button
                           onClick={() => {
                             setEditingId(link.id);

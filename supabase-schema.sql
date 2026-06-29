@@ -17,11 +17,19 @@ CREATE TABLE IF NOT EXISTS qr_links (
 CREATE INDEX IF NOT EXISTS idx_qr_links_short_code ON qr_links (short_code);
 
 -- Table 2: scan_analytics
--- Tracks every QR code scan for analytics
+-- Tracks every QR code scan for analytics (including location and user-agent data)
 CREATE TABLE IF NOT EXISTS scan_analytics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   link_id UUID NOT NULL REFERENCES qr_links(id) ON DELETE CASCADE,
   user_agent TEXT,
+  country TEXT,
+  city TEXT,
+  latitude NUMERIC,
+  longitude NUMERIC,
+  device_type TEXT,
+  os TEXT,
+  browser TEXT,
+  referrer TEXT,
   scanned_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -31,13 +39,10 @@ CREATE INDEX IF NOT EXISTS idx_scan_analytics_link_id ON scan_analytics (link_id
 -- ============================================
 -- Row Level Security (RLS) Configuration
 -- ============================================
--- Disable RLS entirely so the anon key can perform all operations.
--- Admin access is protected by password auth at the application layer.
-
 ALTER TABLE qr_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scan_analytics ENABLE ROW LEVEL SECURITY;
 
--- Allow full access via the anon key (app-level auth handles security)
+-- Allow full access via the anon key (app-level auth handles admin dashboard security)
 CREATE POLICY "Allow all operations on qr_links" ON qr_links
   FOR ALL USING (true) WITH CHECK (true);
 
