@@ -279,9 +279,12 @@ export default function AdminPage() {
               />
               <span>Request Precise Location (GPS)</span>
             </label>
-            <span className="tooltip-hint" title="Asks scanners to share their precise GPS location. If disabled, location is estimated using their IP.">
-              <HelpCircle size={14} />
-            </span>
+            <div className="tooltip-container">
+              <HelpCircle size={14} className="tooltip-trigger" />
+              <div className="tooltip-content">
+                Asks scanners to share their precise GPS location. If disabled, location is estimated using their IP.
+              </div>
+            </div>
           </div>
           
           <button

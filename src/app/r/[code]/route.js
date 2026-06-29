@@ -257,22 +257,24 @@ export async function GET(request, { params }) {
             redirected = true;
             clearTimeout(timeoutId);
 
-            // Log details via our API endpoint
-            fetch('/api/log-scan', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                linkId: linkId,
-                latitude: lat,
-                longitude: lon,
-                userAgent: navigator.userAgent,
-                referrer: referrer,
-                scannerId: scannerId
-              })
-            }).catch(err => console.error("Error logging scan:", err))
-              .finally(() => {
-                window.location.href = dest;
-              });
+             fetch('/api/log-scan', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               keepalive: true,
+               body: JSON.stringify({
+                 linkId: linkId,
+                 latitude: lat,
+                 longitude: lon,
+                 userAgent: navigator.userAgent,
+                 referrer: referrer,
+                 scannerId: scannerId
+               })
+             }).then(() => {
+               window.location.href = dest;
+             }).catch(err => {
+               console.error("Error logging scan:", err);
+               window.location.href = dest;
+             });
           }
 
           function requestLocation() {

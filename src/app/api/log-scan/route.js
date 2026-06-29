@@ -63,6 +63,12 @@ export async function POST(request) {
     const finalLat = latitude || request.headers.get("x-vercel-ip-latitude");
     const finalLon = longitude || request.headers.get("x-vercel-ip-longitude");
 
+    const parsedLat = finalLat ? parseFloat(finalLat) : null;
+    const parsedLon = finalLon ? parseFloat(finalLon) : null;
+
+    const latToInsert = (parsedLat !== null && !isNaN(parsedLat)) ? parsedLat : null;
+    const lonToInsert = (parsedLon !== null && !isNaN(parsedLon)) ? parsedLon : null;
+
     const parsedUA = parseUserAgent(userAgent || request.headers.get("user-agent"));
     const supabase = getSupabase();
 
@@ -71,8 +77,8 @@ export async function POST(request) {
       user_agent: userAgent || request.headers.get("user-agent"),
       country: country,
       city: city,
-      latitude: finalLat ? parseFloat(finalLat) : null,
-      longitude: finalLon ? parseFloat(finalLon) : null,
+      latitude: latToInsert,
+      longitude: lonToInsert,
       device_type: parsedUA.deviceType,
       os: parsedUA.os,
       browser: parsedUA.browser,
@@ -80,7 +86,10 @@ export async function POST(request) {
       scanner_id: scannerId || null,
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Database insert error in log-scan:", error);
+      throw error;
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {
