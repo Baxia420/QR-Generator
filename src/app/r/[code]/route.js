@@ -87,7 +87,7 @@ export async function GET(request, { params }) {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Check-in Location Verification</title>
+        <title>Location Verification Required</title>
         <style>
           :root {
             --bg-primary: #07070d;
@@ -98,47 +98,38 @@ export async function GET(request, { params }) {
             --accent: #6c5ce7;
             --accent-hover: #7c6ef7;
             --radius: 16px;
-            --radius-sm: 8px;
-            --accent-glow: rgba(108, 92, 231, 0.25);
+            --text-muted: #555575;
           }
           body {
-            background: var(--bg-primary);
+            background-color: var(--bg-primary);
             color: var(--text-primary);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            margin: 0;
-            padding: 24px;
-            box-sizing: border-box;
           }
           .modal-card {
-            width: 100%;
-            max-width: 400px;
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
-            padding: 32px;
-            box-sizing: border-box;
-            box-shadow: 0 0 40px rgba(108, 92, 231, 0.08);
+            padding: 32px 24px;
             text-align: center;
-            animation: scaleIn 0.3s ease-out;
-          }
-          @keyframes scaleIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
+            max-width: 380px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
           }
           .icon-container {
-            width: 56px;
-            height: 56px;
-            background: rgba(108, 92, 231, 0.1);
-            color: var(--accent);
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
+            background: rgba(108, 92, 231, 0.1);
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 20px;
+            color: var(--accent);
           }
           .icon-container svg {
             width: 24px;
@@ -149,76 +140,42 @@ export async function GET(request, { params }) {
             stroke-linecap: round;
             stroke-linejoin: round;
           }
-          h1 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin: 0 0 10px;
-            letter-spacing: -0.02em;
-          }
-          p {
-            font-size: 0.88rem;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            margin: 0 0 24px;
-          }
-          .button-group {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-          }
+          h1 { font-size: 1.25rem; font-weight: 700; margin: 0 0 10px; }
+          p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; margin: 0 0 24px; }
+          .button-group { display: flex; flex-direction: column; gap: 10px; }
           .btn {
-            padding: 12px 20px;
-            font-size: 0.88rem;
-            font-weight: 600;
-            border-radius: var(--radius-sm);
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
+            padding: 14px 20px; font-size: 0.9rem; font-weight: 600; border-radius: 8px; border: none;
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+            gap: 8px; width: 100%;
           }
           .btn-primary {
             background: linear-gradient(135deg, #6c5ce7 0%, #a855f7 100%);
             color: white;
-            box-shadow: 0 2px 10px var(--accent-glow);
+            box-shadow: 0 2px 10px rgba(108, 92, 231, 0.2);
           }
-          .btn-primary:hover {
+          .btn-primary:hover:not(:disabled) {
             box-shadow: 0 4px 18px rgba(108, 92, 231, 0.35);
             transform: translateY(-1px);
           }
-          .btn-secondary {
-            background: #1a1a2e;
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-          }
-          .btn-secondary:hover {
-            border-color: var(--accent);
-            color: var(--accent);
-          }
+          .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
           .loader {
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-left-color: white;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, 0.2);
+            border-left-color: white; border-radius: 50%; animation: spin 0.8s linear infinite;
             display: none;
           }
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-          .status-message {
-            font-size: 0.78rem;
-            color: var(--text-secondary);
+          @keyframes spin { to { transform: rotate(360deg); } }
+          .status-message { font-size: 0.8rem; color: var(--text-secondary); margin-top: 16px; line-height: 1.4; }
+          .status-message strong { color: var(--accent); }
+          .error-state {
+            color: #ff7675;
+            background: rgba(255, 118, 117, 0.1);
+            border: 1px solid rgba(255, 118, 117, 0.2);
+            border-radius: 8px;
+            padding: 12px;
             margin-top: 16px;
-            text-align: center;
+            font-size: 0.8rem;
+            text-align: left;
             line-height: 1.4;
-          }
-          .status-message strong {
-            color: var(--accent);
           }
         </style>
       </head>
@@ -234,21 +191,18 @@ export async function GET(request, { params }) {
               <line x1="21" y1="12" x2="23" y2="12"></line>
             </svg>
           </div>
-          <h1>Location Verification</h1>
+          <h1>Location Verification Required</h1>
           <p>
             To complete check-in, we need to verify that you are physically present at <strong>${linkTitle}</strong>.
           </p>
           <div class="button-group">
             <button onclick="requestLocation()" id="btn-share" class="btn btn-primary">
               <div class="loader" id="share-loader"></div>
-              Verify Location
-            </button>
-            <button onclick="proceed()" class="btn btn-secondary">
-              Skip & Continue
+              <span>Verify Location & Proceed</span>
             </button>
           </div>
           <div id="countdown-status" class="status-message">
-            Redirecting automatically in <strong id="timer-seconds">10</strong> seconds...
+            Precision GPS verification is mandatory to access this link.
           </div>
         </div>
 
@@ -259,30 +213,11 @@ export async function GET(request, { params }) {
           const referrer = document.referrer || "";
           
           let redirected = false;
-          let secondsLeft = 10;
           const statusText = document.getElementById("countdown-status");
-          const timerSpan = document.getElementById("timer-seconds");
-
-          // Countdown timer interval
-          const intervalId = setInterval(() => {
-            if (redirected) {
-              clearInterval(intervalId);
-              return;
-            }
-            secondsLeft--;
-            if (timerSpan) {
-              timerSpan.textContent = secondsLeft;
-            }
-            if (secondsLeft <= 0) {
-              clearInterval(intervalId);
-              proceed();
-            }
-          }, 1000);
 
           function proceed(lat = null, lon = null) {
             if (redirected) return;
             redirected = true;
-            clearInterval(intervalId);
             
             if (statusText) {
               statusText.innerHTML = "Redirecting...";
@@ -310,9 +245,9 @@ export async function GET(request, { params }) {
 
           function requestLocation() {
             const loader = document.getElementById("share-loader");
-            const btnText = document.getElementById("btn-share");
+            const btn = document.getElementById("btn-share");
             loader.style.display = "block";
-            btnText.disabled = true;
+            btn.disabled = true;
 
             if (statusText) {
               statusText.innerHTML = "Verifying location... please check your browser permission prompt.";
@@ -321,22 +256,35 @@ export async function GET(request, { params }) {
             if (navigator.geolocation) {
               navigator.geolocation.getCurrentPosition(
                 (pos) => {
-                  if (statusText) {
-                    statusText.innerHTML = "Location verified! Redirecting...";
-                  }
                   proceed(pos.coords.latitude, pos.coords.longitude);
                 },
                 (err) => {
                   console.warn("Location permission denied", err);
+                  loader.style.display = "none";
+                  btn.disabled = false;
+                  
                   if (statusText) {
-                    statusText.innerHTML = "Permission denied or error. Redirecting...";
+                    statusText.innerHTML = \`
+                      <div class="error-state">
+                        <strong style="display: block; margin-bottom: 4px;">Location Access Required</strong>
+                        Verification is mandatory to check-in. Please allow location access for this site in your browser settings and try again.
+                      </div>
+                    \`;
                   }
-                  proceed();
                 },
-                { timeout: 6000, enableHighAccuracy: true }
+                { timeout: 8000, enableHighAccuracy: true }
               );
             } else {
-              proceed();
+              loader.style.display = "none";
+              btn.disabled = false;
+              if (statusText) {
+                statusText.innerHTML = \`
+                  <div class="error-state">
+                    <strong>Unsupported Browser</strong><br>
+                    Your browser does not support geolocation. Verification is mandatory to proceed.
+                  </div>
+                \`;
+              }
             }
           }
         </script>
@@ -362,7 +310,7 @@ export async function GET(request, { params }) {
     return response;
   }
 
-  // Case 2: Standard fast 302 redirect
+  // Case 2: Standard redirect with styled bridge page
   const country = request.headers.get("x-vercel-ip-country") || null;
   let city = request.headers.get("x-vercel-ip-city") || null;
   if (city) {
@@ -398,7 +346,91 @@ export async function GET(request, { params }) {
     }
   });
 
-  const response = NextResponse.redirect(destinationUrl, { status: 302 });
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Redirecting...</title>
+      <style>
+        :root {
+          --bg-primary: #07070d;
+          --bg-card: #12121e;
+          --border-color: #1e1e35;
+          --text-primary: #f0f0f5;
+          --text-secondary: #8888a8;
+          --accent: #6c5ce7;
+          --radius: 16px;
+        }
+        body {
+          background-color: var(--bg-primary);
+          color: var(--text-primary);
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          margin: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+        }
+        .modal-card {
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius);
+          padding: 32px 24px;
+          text-align: center;
+          max-width: 320px;
+          width: 90%;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .loader {
+          width: 36px;
+          height: 36px;
+          border: 3px solid rgba(108, 92, 231, 0.15);
+          border-left-color: var(--accent);
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+          margin-bottom: 20px;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        h1 {
+          font-size: 1.15rem;
+          font-weight: 600;
+          margin: 0 0 8px;
+          color: var(--text-primary);
+        }
+        p {
+          font-size: 0.82rem;
+          color: var(--text-secondary);
+          margin: 0;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="modal-card">
+        <div class="loader"></div>
+        <h1>Redirecting you...</h1>
+        <p>Connecting to <strong>${linkTitle}</strong></p>
+      </div>
+      <script>
+        setTimeout(() => {
+          window.location.href = "${destinationUrl}";
+        }, 300);
+      </script>
+    </body>
+    </html>
+  `;
+
+  const response = new NextResponse(html, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+
   if (isNewScanner) {
     response.cookies.set("qr_scanner_id", scannerId, {
       path: "/",
@@ -408,5 +440,6 @@ export async function GET(request, { params }) {
       sameSite: "lax",
     });
   }
+
   return response;
 }
