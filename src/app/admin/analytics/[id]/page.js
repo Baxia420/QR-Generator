@@ -10,9 +10,7 @@ import {
   Clock,
   Compass,
   Download,
-  Eye,
   Globe,
-  HelpCircle,
   Laptop,
   Link2,
   ListFilter,
@@ -35,18 +33,24 @@ export default function AnalyticsPage() {
   const [scans, setScans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [mounted, setMounted] = useState(false);
   
   // Filtering state (filter scans by a selected date/time from the chart)
   const [selectedTimeframe, setSelectedTimeframe] = useState(null);
-  
-  // Map reference for Leaflet
   const [leafletLoaded, setLeafletLoaded] = useState(false);
-  const [mapInstance, setMapInstance] = useState(null);
-  const [markersGroup, setMarkersGroup] = useState(null);
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "");
+  const baseUrl = useMemo(() => {
+    const configuredBaseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    return (
+      configuredBaseUrl ||
+      (typeof window !== "undefined" ? window.location.origin : "")
+    );
+  }, []);
+
+  // Set mounted on client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Load Leaflet dynamically on client mount
   useEffect(() => {
@@ -340,109 +344,94 @@ export default function AnalyticsPage() {
 
   // Initialize and update Leaflet Map
   useEffect(() => {
-    if (!leafletLoaded || typeof window === "undefined" || !window.L || loading || !link) return;
+    const container = document.getElementById("analytics-map");
+    if (!leafletLoaded || typeof window === "undefined" || !window.L || loading || !link || !container) return;
 
     // Filter scans with coordinate data
     const scansWithCoords = filteredScans.filter((s) => s.latitude && s.longitude);
 
-    // Initial map setup
-    let map = mapInstance;
-    let markers = markersGroup;
+    // Default to Kuala Lumpur coordinates [3.1390, 101.6869] if there are no coordinates, or center of the data points
+    const defaultCenter = [3.1390, 101.6869];
+    let center = defaultCenter;
 
-    if (!map) {
-      // Default to Kuala Lumpur coordinates [3.1390, 101.6869] if there are no coordinates, or center of the data points
-      const defaultCenter = [3.1390, 101.6869];
-      let center = defaultCenter;
-
-      if (scansWithCoords.length > 0) {
-        const sumLat = scansWithCoords.reduce((sum, s) => sum + Number(s.latitude), 0);
-        const sumLon = scansWithCoords.reduce((sum, s) => sum + Number(s.longitude), 0);
-        center = [sumLat / scansWithCoords.length, sumLon / scansWithCoords.length];
-      }
-
-      map = window.L.map("analytics-map", {
-        center: center,
-        zoom: scansWithCoords.length > 0 ? 12 : 5,
-        zoomControl: false,
-      });
-
-      window.L.control.zoom({ position: "bottomright" }).addTo(map);
-
-      window.L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-        subdomains: "abcd",
-        maxZoom: 20,
-      }).addTo(map);
-
-      markers = window.L.layerGroup().addTo(map);
-
-      setMapInstance(map);
-      setMarkersGroup(markers);
-    } else {
-      // Clear existing markers to draw new ones
-      markers.clearLayers();
-    }
-
-    // Add markers for each scan location
     if (scansWithCoords.length > 0) {
-      const bounds = [];
-      
-      // Group markers by identical coordinates to prevent stacking
-      const coordGroups = {};
-      scansWithCoords.forEach((s) => {
-        const key = `${s.latitude}_${s.longitude}`;
-        if (!coordGroups[key]) coordGroups[key] = [];
-        coordGroups[key].push(s);
-      });
-
-      Object.entries(coordGroups).forEach(([key, items]) => {
-        const [lat, lon] = key.split("_").map(Number);
-        bounds.push([lat, lon]);
-
-        const count = items.length;
-        const details = items.map(s => {
-          const time = new Date(s.scanned_at).toLocaleTimeString("en-US", {
-            hour: "numeric",
-            minute: "2-digit",
-          });
-          return `${time} (${s.device_type} - ${s.os})`;
-        }).slice(0, 3).join("<br/>");
-
-        const displayDetails = items.length > 3 ? `${details}<br/>+ ${items.length - 3} more` : details;
-
-        // Custom pulsing dot marker
-        const iconHtml = `
-          <div class="marker-pulse-wrapper">
-            <div class="marker-pulse-core"></div>
-            <div class="marker-pulse-wave"></div>
-            ${count > 1 ? `<span class="marker-count">${count}</span>` : ""}
-          </div>
-        `;
-
-        const customIcon = window.L.divIcon({
-          html: iconHtml,
-          className: "custom-leaflet-marker",
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-        });
-
-        window.L.marker([lat, lon], { icon: customIcon })
-          .addTo(markers)
-          .bindPopup(
-            `<div class="map-popup">
-              <strong>${items[0].city || "Kuala Lumpur"}, ${items[0].country || "MY"}</strong>
-              <div class="map-popup-scans">${count} scan${count > 1 ? "s" : ""}</div>
-              <div class="map-popup-list">${displayDetails}</div>
-            </div>`
-          );
-      });
-
-      // Fit map view bounds
-      if (bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
-      }
+      const sumLat = scansWithCoords.reduce((sum, s) => sum + Number(s.latitude), 0);
+      const sumLon = scansWithCoords.reduce((sum, s) => sum + Number(s.longitude), 0);
+      center = [sumLat / scansWithCoords.length, sumLon / scansWithCoords.length];
     }
 
+    const map = window.L.map("analytics-map", {
+      center: center,
+      zoom: scansWithCoords.length > 0 ? 12 : 5,
+      zoomControl: false,
+    });
+
+    window.L.control.zoom({ position: "bottomright" }).addTo(map);
+
+    window.L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      subdomains: "abcd",
+      maxZoom: 20,
+    }).addTo(map);
+
+    const markers = window.L.layerGroup().addTo(map);
+
+    // Group markers by identical coordinates to prevent stacking
+    const coordGroups = {};
+    scansWithCoords.forEach((s) => {
+      const key = `${s.latitude}_${s.longitude}`;
+      if (!coordGroups[key]) coordGroups[key] = [];
+      coordGroups[key].push(s);
+    });
+
+    Object.entries(coordGroups).forEach(([key, items]) => {
+      const [lat, lon] = key.split("_").map(Number);
+
+      const count = items.length;
+      const details = items.map(s => {
+        const time = new Date(s.scanned_at).toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+        });
+        return `${time} (${s.device_type} - ${s.os})`;
+      }).slice(0, 3).join("<br/>");
+
+      const displayDetails = items.length > 3 ? `${details}<br/>+ ${items.length - 3} more` : details;
+
+      // Custom pulsing dot marker
+      const iconHtml = `
+        <div class="marker-pulse-wrapper">
+          <div class="marker-pulse-core"></div>
+          <div class="marker-pulse-wave"></div>
+          ${count > 1 ? `<span class="marker-count">${count}</span>` : ""}
+        </div>
+      `;
+
+      const customIcon = window.L.divIcon({
+        html: iconHtml,
+        className: "custom-leaflet-marker",
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+
+      window.L.marker([lat, lon], { icon: customIcon })
+        .addTo(markers)
+        .bindPopup(
+          `<div class="map-popup">
+            <strong>${items[0].city || "Kuala Lumpur"}, ${items[0].country || "MY"}</strong>
+            <div class="map-popup-scans">${count} scan${count > 1 ? "s" : ""}</div>
+            <div class="map-popup-list">${displayDetails}</div>
+          </div>`
+        );
+    });
+
+    if (scansWithCoords.length > 0) {
+      map.fitBounds(scansWithCoords.map(s => [Number(s.latitude), Number(s.longitude)]), { padding: [40, 40], maxZoom: 14 });
+    }
+
+    return () => {
+      map.remove();
+    };
   }, [leafletLoaded, filteredScans, loading, link]);
 
   if (loading) {
@@ -504,7 +493,9 @@ export default function AnalyticsPage() {
             </p>
           </div>
           <div className="info-secondary">
-            <QRCodeCard shortCode={link.short_code} baseUrl={baseUrl} title={link.title} />
+            {mounted && (
+              <QRCodeCard shortCode={link.short_code} baseUrl={baseUrl} title={link.title} />
+            )}
           </div>
         </div>
       </div>
